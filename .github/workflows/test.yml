@@ -33,7 +33,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_AUTO
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_AUTO' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run tunnel (auto)
       id: test
       uses: vmactions/cf-tunnel@main
@@ -45,15 +51,25 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_AUTO"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        server = "${SERVER}"
+        url = f'https://{server}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_AUTO' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-http-cf:
     strategy:
@@ -85,7 +101,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_CF
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_CF' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run cf tunnel
       id: test
       uses: vmactions/cf-tunnel@main
@@ -98,15 +120,25 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_CF"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        server = "${SERVER}"
+        url = f'https://{server}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_CF' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-http-localhost-run:
     strategy:
@@ -138,7 +170,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_LHRUN
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_LHRUN' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run localhost.run tunnel
       id: test
       uses: vmactions/cf-tunnel@main
@@ -151,15 +189,25 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_LHRUN"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        server = "${SERVER}"
+        url = f'https://{server}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_LHRUN' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-http-pinggy:
     strategy:
@@ -191,7 +239,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_PINGGY
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_PINGGY' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run pinggy tunnel
       id: test
       uses: vmactions/cf-tunnel@main
@@ -204,15 +258,25 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_PINGGY"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        server = "${SERVER}"
+        url = f'https://{server}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_PINGGY' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-http-serveo:
     strategy:
@@ -244,7 +308,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_SERVEO
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_SERVEO' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run serveo tunnel
       id: test
       uses: vmactions/cf-tunnel@main
@@ -257,15 +327,25 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_SERVEO"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        server = "${SERVER}"
+        url = f'https://{server}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_SERVEO' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-http-localtunnel:
     strategy:
@@ -297,7 +377,13 @@ jobs:
         " &
         sleep 2
     - name: Verify local server is running
-      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_LOCALTUNNEL
+      run: |
+        python3 << 'PYEOF'
+        import urllib.request
+        resp = urllib.request.urlopen('http://localhost:8899').read().decode()
+        assert 'TUNNEL_TEST_OK_LOCALTUNNEL' in resp, f'Unexpected: {resp}'
+        print(resp)
+        PYEOF
     - name: Run localtunnel
       id: test
       uses: vmactions/cf-tunnel@main
@@ -310,15 +396,24 @@ jobs:
     - name: Verify tunnel connectivity
       run: |
         SERVER="${{ steps.test.outputs.server }}"
-        echo "Testing tunnel: https://${SERVER}"
-        RESP=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors --max-time 60 -H "Bypass-Tunnel-Reminder: true" "https://${SERVER}")
-        echo "Response: ${RESP}"
-        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_LOCALTUNNEL"; then
-          echo "Tunnel verification PASSED"
-        else
-          echo "Tunnel verification FAILED"
-          exit 1
-        fi
+        python3 << PYEOF
+        import urllib.request, ssl, time, sys
+        ctx = ssl.create_default_context()
+        req = urllib.request.Request(f'https://${SERVER}', headers={'Bypass-Tunnel-Reminder': 'true'})
+        print(f'Testing tunnel: {req.full_url}')
+        for attempt in range(5):
+            try:
+                resp = urllib.request.urlopen(req, timeout=30, context=ctx).read().decode()
+                print(f'Attempt {attempt+1} response: {resp[:200]}')
+                if 'TUNNEL_TEST_OK_LOCALTUNNEL' in resp:
+                    print('Tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('Tunnel verification FAILED')
+        sys.exit(1)
+        PYEOF
 
   test-tcp-auto:
     strategy:

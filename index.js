@@ -13,16 +13,20 @@ const { spawn } = require("child_process");
 function startBackgroundProcess(executable, args, logFile) {
   let child;
   if (os.platform() === 'win32') {
-    // On Windows, write a .bat wrapper to handle I/O redirection reliably.
-    // Directly passing >"file" 2>&1 as spawn args causes quoting conflicts with cmd.exe /c.
-    const batFile = logFile + '.bat';
-    const cmdArgs = args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ');
-    fs.writeFileSync(batFile, `@${executable} ${cmdArgs} >"${logFile}" 2>&1\n`);
-    child = spawn('cmd.exe', ['/c', batFile], {
-      stdio: 'ignore',
-      detached: true,
+    // On Windows, SSH and other TUI programs write directly to the console buffer,
+    // bypassing stdout/stderr file redirection in .bat files. Use Node's pipe stdio
+    // to intercept output and pump it to the log file ourselves.
+    child = spawn(executable, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
+    const logStream = fs.createWriteStream(logFile);
+    child.stdout.on('data', (chunk) => logStream.write(chunk));
+    child.stderr.on('data', (chunk) => logStream.write(chunk));
+    // Unref the streams so they don't keep the Node process alive.
+    // The child process continues running (SSH maintains its own TCP connection).
+    child.stdout.unref();
+    child.stderr.unref();
   } else {
     const fd = fs.openSync(logFile, 'w');
     child = spawn(executable, args, {
@@ -169,32 +173,30 @@ async function run(protocol, port) {
     // Read and parse log file (supports both JSON lines and plain text)
     let server = "";
     try {
-      {
-        const logContent = readLogFile(log);
-        const lines = logContent.split('\n');
-        
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          // Regex-first parse to handle non-JSON lines
-          const regexMatch = line.match(/https?:\/\/([A-Za-z0-9.-]+\.trycloudflare\.com)/);
-          if (regexMatch && regexMatch[1]) {
-            server = regexMatch[1];
-            break;
-          }
+      const logContent = readLogFile(log);
+      const lines = logContent.split('\n');
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // Regex-first parse to handle non-JSON lines
+        const regexMatch = line.match(/https?:\/\/([A-Za-z0-9.-]+\.trycloudflare\.com)/);
+        if (regexMatch && regexMatch[1]) {
+          server = regexMatch[1];
+          break;
+        }
 
-          // Fallback to JSON parse if line is JSON
-          try {
-            const jsonLine = JSON.parse(line);
-            if (jsonLine.message && typeof jsonLine.message === "string") {
-              const msgMatch = jsonLine.message.match(/https?:\/\/([A-Za-z0-9.-]+\.trycloudflare\.com)/);
-              if (msgMatch && msgMatch[1]) {
-                server = msgMatch[1];
-                break;
-              }
+        // Fallback to JSON parse if line is JSON
+        try {
+          const jsonLine = JSON.parse(line);
+          if (jsonLine.message && typeof jsonLine.message === "string") {
+            const msgMatch = jsonLine.message.match(/https?:\/\/([A-Za-z0-9.-]+\.trycloudflare\.com)/);
+            if (msgMatch && msgMatch[1]) {
+              server = msgMatch[1];
+              break;
             }
-          } catch (e) {
-            // Skip invalid JSON lines
           }
+        } catch (e) {
+          // Skip invalid JSON lines
         }
       }
     } catch (e) {
@@ -257,18 +259,16 @@ async function runLocalhostRun(protocol, port) {
 
     let server = "";
     try {
-      {
-        const logContent = readLogFile(log);
-        const lines = logContent.split('\n');
+      const logContent = readLogFile(log);
+      const lines = logContent.split('\n');
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          // localhost.run outputs tunnel URLs like https://xxxx.lhr.life
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.lhr\.life)/);
-          if (match && match[1]) {
-            server = match[1];
-            break;
-          }
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // localhost.run outputs tunnel URLs like https://xxxx.lhr.life
+        const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.lhr\.life)/);
+        if (match && match[1]) {
+          server = match[1];
+          break;
         }
       }
     } catch (e) {
@@ -315,26 +315,24 @@ async function runPinggy(protocol, port) {
 
     let server = "";
     try {
-      {
-        const logContent = readLogFile(log);
-        const lines = logContent.split('\n');
+      const logContent = readLogFile(log);
+      const lines = logContent.split('\n');
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          if (protocol === "tcp") {
-            // TCP mode: match tcp://host:port
-            const match = line.match(/tcp:\/\/([A-Za-z0-9._-]+\.pinggy\.link:\d+)/);
-            if (match && match[1]) {
-              server = match[1];
-              break;
-            }
-          } else {
-            // HTTP mode: match https://xxxx.pinggy.link
-            const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/);
-            if (match && match[1]) {
-              server = match[1];
-              break;
-            }
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        if (protocol === "tcp") {
+          // TCP mode: match tcp://host:port
+          const match = line.match(/tcp:\/\/([A-Za-z0-9._-]+\.pinggy\.link:\d+)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
+          }
+        } else {
+          // HTTP mode: match https://xxxx.pinggy.link
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
           }
         }
       }
@@ -387,19 +385,17 @@ async function runServeo(protocol, port) {
 
     let server = "";
     try {
-      {
-        const logContent = readLogFile(log);
-        const lines = logContent.split('\n');
+      const logContent = readLogFile(log);
+      const lines = logContent.split('\n');
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          // HTTP mode: match https://xxxx.serveousercontent.com or https://xxxx.serveo.net
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveousercontent\.com)/)
-            || line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
-          if (match && match[1]) {
-            server = match[1];
-            break;
-          }
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // HTTP mode: match https://xxxx.serveousercontent.com or https://xxxx.serveo.net
+        const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveousercontent\.com)/)
+          || line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
+        if (match && match[1]) {
+          server = match[1];
+          break;
         }
       }
     } catch (e) {
@@ -449,18 +445,16 @@ async function runLocaltunnel(protocol, port) {
 
     let server = "";
     try {
-      {
-        const logContent = readLogFile(log);
-        const lines = logContent.split('\n');
+      const logContent = readLogFile(log);
+      const lines = logContent.split('\n');
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          // localtunnel outputs: your url is: https://xxxx.loca.lt
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.loca\.lt)/);
-          if (match && match[1]) {
-            server = match[1];
-            break;
-          }
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        // localtunnel outputs: your url is: https://xxxx.loca.lt
+        const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.loca\.lt)/);
+        if (match && match[1]) {
+          server = match[1];
+          break;
         }
       }
     } catch (e) {

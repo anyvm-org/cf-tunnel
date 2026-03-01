@@ -21,7 +21,6 @@ fs.writeFileSync(logFile, "");  // create file immediately so main can detect it
 const child = spawn(executable, args, {
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: true,
-  shell: true,
 });
 const logStream = fs.createWriteStream(logFile);
 child.stdout.on("data", (chunk) => logStream.write(chunk));
@@ -459,7 +458,8 @@ async function runLocaltunnel(protocol, port) {
   let log = path.join(workingDir, "./localtunnel.log");
 
   // Install and run localtunnel via npx
-  startBackgroundProcess('npx', ['-y', 'localtunnel', '--port', `${port}`], log);
+  const npxCmd = os.platform() === 'win32' ? 'npx.cmd' : 'npx';
+  startBackgroundProcess(npxCmd, ['-y', 'localtunnel', '--port', `${port}`], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

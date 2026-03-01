@@ -3,16 +3,86 @@ name: Test
 on: [push]
 
 jobs:
-  testsolaris:
-    runs-on: macos-latest
-    name: Test a cf tunnel
+  testtunnel:
+    runs-on: ubuntu-latest
+    name: Test auto fallback (all providers)
     steps:
-    - uses: actions/checkout@v4
-    - name: Run establish a cf tunnel
+    - uses: actions/checkout@v6
+    - name: Run establish a tunnel (auto)
       id: test
       uses: vmactions/cf-tunnel@main
       with:
         protocol: tcp
         port: 22
+    - name: Show tunnel server
+      run: echo "server=${{ steps.test.outputs.server }}"
+    - name: sleep
+      run: sleep 30
+
+  test-cf:
+    runs-on: ubuntu-latest
+    name: Test cloudflare provider
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run cf tunnel
+      id: test
+      uses: vmactions/cf-tunnel@main
+      with:
+        protocol: tcp
+        port: 22
+        provider: cf
+    - name: Show tunnel server
+      run: echo "server=${{ steps.test.outputs.server }}"
+    - name: sleep
+      run: sleep 30
+
+  test-localhost-run:
+    runs-on: ubuntu-latest
+    name: Test localhost.run provider
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run localhost.run tunnel
+      id: test
+      uses: vmactions/cf-tunnel@main
+      with:
+        protocol: tcp
+        port: 22
+        provider: localhost.run
+    - name: Show tunnel server
+      run: echo "server=${{ steps.test.outputs.server }}"
+    - name: sleep
+      run: sleep 30
+
+  test-pinggy:
+    runs-on: ubuntu-latest
+    name: Test pinggy provider
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run pinggy tunnel
+      id: test
+      uses: vmactions/cf-tunnel@main
+      with:
+        protocol: tcp
+        port: 22
+        provider: pinggy
+    - name: Show tunnel server
+      run: echo "server=${{ steps.test.outputs.server }}"
+    - name: sleep
+      run: sleep 30
+
+  test-serveo:
+    runs-on: ubuntu-latest
+    name: Test serveo provider
+    steps:
+    - uses: actions/checkout@v6
+    - name: Run serveo tunnel
+      id: test
+      uses: vmactions/cf-tunnel@main
+      with:
+        protocol: tcp
+        port: 22
+        provider: serveo
+    - name: Show tunnel server
+      run: echo "server=${{ steps.test.outputs.server }}"
     - name: sleep
       run: sleep 30

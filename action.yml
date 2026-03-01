@@ -7,6 +7,10 @@ inputs:
   port:
     description: 'port to forward to'
     required: true
+  provider:
+    description: 'Tunnel provider: cf, localhost.run, pinggy, serveo. Empty to try all in order.'
+    required: false
+    default: ''
 outputs:
   server:
     description: 'The server'

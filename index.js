@@ -141,12 +141,8 @@ async function run(protocol, port) {
     core.info("server: " + server);
     
     // Write to GITHUB_OUTPUT
-    if (os.platform() === "win32") {
-      await exec.exec("powershell", ["-Command", `Add-Content -Path "$env:GITHUB_OUTPUT" -Value "server=${server}"`]);
-    } else {
-      await exec.exec("sh", [], { input: `echo "server=${server}" >> $GITHUB_OUTPUT` });
-    }
-    return;
+    await setOutput("server", server);
+    return true;
   }
   
   // On timeout, surface a helpful log snippet for debugging
@@ -160,9 +156,209 @@ async function run(protocol, port) {
     }
   }
 
-  core.setFailed("Failed to get tunnel URL after 60 seconds. Please check the logs.");
+  core.warning("Cloudflared failed to get tunnel URL after 60 seconds.");
+  return false;
 }
 
+
+
+async function setOutput(name, value) {
+  if (os.platform() === "win32") {
+    await exec.exec("powershell", ["-Command", `Add-Content -Path "$env:GITHUB_OUTPUT" -Value "${name}=${value}"`]);
+  } else {
+    await exec.exec("sh", [], { input: `echo "${name}=${value}" >> $GITHUB_OUTPUT` });
+  }
+}
+
+
+async function runLocalhostRun(protocol, port) {
+  core.info("Falling back to localhost.run tunnel service...");
+
+  let workingDir = __dirname;
+  let log = path.join(workingDir, "./localhost_run.log");
+
+  // localhost.run uses SSH to create HTTP tunnels
+  // ssh -o StrictHostKeyChecking=no -R 80:localhost:PORT ssh.localhost.run
+  if (os.platform() === "win32") {
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','ssh.localhost.run') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    await exec.exec("powershell", ["-Command", psCmd]);
+  } else {
+    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} ssh.localhost.run >${log} 2>&1 &` });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    await sleep(5000);
+
+    let server = "";
+    try {
+      if (fs.existsSync(log)) {
+        const logContent = fs.readFileSync(log, 'utf8');
+        const lines = logContent.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          // localhost.run outputs URLs like https://xxxx.lhr.life
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.lhr\.life)/)
+            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.localhost\.run)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      core.info("Error reading localhost.run log: " + e.message);
+    }
+
+    if (!server) {
+      continue;
+    }
+    core.info("localhost.run server: " + server);
+
+    await setOutput("server", server);
+    return true;
+  }
+
+  // On timeout, surface log for debugging
+  if (fs.existsSync(log)) {
+    try {
+      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
+      const tailLines = logContent.slice(-20).join('\n');
+      core.info("localhost.run last log lines:\n" + tailLines);
+    } catch (e) {
+      core.info("Could not read localhost.run log tail: " + e.message);
+    }
+  }
+
+  core.warning("localhost.run failed to get tunnel URL after 60 seconds.");
+  return false;
+}
+
+
+async function runPinggy(protocol, port) {
+  core.info("Falling back to Pinggy tunnel service...");
+
+  let workingDir = __dirname;
+  let log = path.join(workingDir, "./pinggy.log");
+
+  // Pinggy uses SSH: ssh -p 443 -R0:localhost:PORT -o StrictHostKeyChecking=no a.pinggy.io
+  if (os.platform() === "win32") {
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-p','443','-R0:localhost:${port}','-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','a.pinggy.io') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    await exec.exec("powershell", ["-Command", psCmd]);
+  } else {
+    await exec.exec("sh", [], { input: `ssh -p 443 -R0:localhost:${port} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 a.pinggy.io >${log} 2>&1 &` });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    await sleep(5000);
+
+    let server = "";
+    try {
+      if (fs.existsSync(log)) {
+        const logContent = fs.readFileSync(log, 'utf8');
+        const lines = logContent.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          // Pinggy outputs URLs like https://xxxx-xx-xx-xx-xx.a.free.pinggy.link
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/)
+            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.io)/)
+            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.online)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      core.info("Error reading Pinggy log: " + e.message);
+    }
+
+    if (!server) {
+      continue;
+    }
+    core.info("Pinggy server: " + server);
+
+    await setOutput("server", server);
+    return true;
+  }
+
+  // On timeout, surface log for debugging
+  if (fs.existsSync(log)) {
+    try {
+      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
+      const tailLines = logContent.slice(-20).join('\n');
+      core.info("Pinggy last log lines:\n" + tailLines);
+    } catch (e) {
+      core.info("Could not read Pinggy log tail: " + e.message);
+    }
+  }
+
+  core.warning("Pinggy failed to get tunnel URL after 60 seconds.");
+  return false;
+}
+
+
+async function runServeo(protocol, port) {
+  core.info("Falling back to Serveo tunnel service...");
+
+  let workingDir = __dirname;
+  let log = path.join(workingDir, "./serveo.log");
+
+  // Serveo uses SSH: ssh -o StrictHostKeyChecking=no -R 80:localhost:PORT serveo.net
+  if (os.platform() === "win32") {
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    await exec.exec("powershell", ["-Command", psCmd]);
+  } else {
+    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} serveo.net >${log} 2>&1 &` });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    await sleep(5000);
+
+    let server = "";
+    try {
+      if (fs.existsSync(log)) {
+        const logContent = fs.readFileSync(log, 'utf8');
+        const lines = logContent.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          // Serveo outputs URLs like https://xxxx.serveo.net
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveo\.net)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      core.info("Error reading Serveo log: " + e.message);
+    }
+
+    if (!server) {
+      continue;
+    }
+    core.info("Serveo server: " + server);
+
+    await setOutput("server", server);
+    return true;
+  }
+
+  // On timeout, surface log for debugging
+  if (fs.existsSync(log)) {
+    try {
+      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
+      const tailLines = logContent.slice(-20).join('\n');
+      core.info("Serveo last log lines:\n" + tailLines);
+    } catch (e) {
+      core.info("Could not read Serveo log tail: " + e.message);
+    }
+  }
+
+  core.setFailed("Failed to get tunnel URL from Serveo.");
+  return false;
+}
 
 
 async function main() {
@@ -180,10 +376,45 @@ async function main() {
     return;
   }
 
+  let provider = (core.getInput("provider") || "").trim().toLowerCase();
+  core.info("provider: " + (provider || "(auto)"));
 
-  await download();
+  // Define the provider chain
+  const providers = [
+    { name: "cf",            fn: async () => { await download(); return await run(protocol, port); } },
+    { name: "localhost.run", fn: async () => await runLocalhostRun(protocol, port) },
+    { name: "pinggy",        fn: async () => await runPinggy(protocol, port) },
+    { name: "serveo",        fn: async () => await runServeo(protocol, port) },
+  ];
 
-  await run(protocol, port);
+  let chain;
+  if (provider) {
+    const selected = providers.find(p => p.name === provider);
+    if (!selected) {
+      core.setFailed(`Unknown provider: "${provider}". Valid values: cf, localhost.run, pinggy, serveo`);
+      return;
+    }
+    chain = [selected];
+  } else {
+    chain = providers;
+  }
+
+  let success = false;
+  for (const p of chain) {
+    try {
+      core.info(`Trying provider: ${p.name}`);
+      success = await p.fn();
+    } catch (e) {
+      core.warning(`${p.name} failed: ${e.message}`);
+      success = false;
+    }
+    if (success) break;
+  }
+
+  if (!success) {
+    const tried = chain.map(p => p.name).join(", ");
+    core.setFailed(`Failed to get tunnel URL. Tried: ${tried}`);
+  }
 
 
   process.exit();

@@ -14,19 +14,16 @@ function startBackgroundProcess(executable, args, logFile) {
   let child;
   if (os.platform() === 'win32') {
     // On Windows, SSH and other TUI programs write directly to the console buffer,
-    // bypassing stdout/stderr file redirection in .bat files. Use Node's pipe stdio
-    // to intercept output and pump it to the log file ourselves.
-    child = spawn(executable, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+    // bypassing stdout/stderr file redirection in .bat files.
+    // We spawn a detached helper Node script that pipes the child's output to the
+    // log file.  Because the helper is detached, it (and the tunnel process) survive
+    // after the main Action Node process calls process.exit().
+    const helperScript = path.join(__dirname, 'spawn_helper.js');
+    child = spawn(process.execPath, [helperScript, logFile, executable, ...args], {
+      stdio: 'ignore',
+      detached: true,
       windowsHide: true,
     });
-    const logStream = fs.createWriteStream(logFile);
-    child.stdout.on('data', (chunk) => logStream.write(chunk));
-    child.stderr.on('data', (chunk) => logStream.write(chunk));
-    // Unref the streams so they don't keep the Node process alive.
-    // The child process continues running (SSH maintains its own TCP connection).
-    child.stdout.unref();
-    child.stderr.unref();
   } else {
     const fd = fs.openSync(logFile, 'w');
     child = spawn(executable, args, {

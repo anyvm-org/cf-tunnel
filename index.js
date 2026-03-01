@@ -16,10 +16,12 @@ function startBackgroundProcess(executable, args, logFile) {
     stdio: ['ignore', fd, fd],
     detached: true,
     windowsHide: true,
-    shell: os.platform() === 'win32',
+  });
+  child.on('error', (err) => {
+    core.info(`Background process error for ${executable}: ${err.message}`);
   });
   child.unref();
-  fs.closeSync(fd);
+  // Do not close fd here - child process needs to keep writing to it
 }
 
 
@@ -409,7 +411,8 @@ async function runLocaltunnel(protocol, port) {
   let log = path.join(workingDir, "./localtunnel.log");
 
   // Install and run localtunnel via npx
-  startBackgroundProcess('npx', ['-y', 'localtunnel', '--port', `${port}`], log);
+  const npxCmd = os.platform() === 'win32' ? 'npx.cmd' : 'npx';
+  startBackgroundProcess(npxCmd, ['-y', 'localtunnel', '--port', `${port}`], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

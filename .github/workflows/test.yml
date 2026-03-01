@@ -52,13 +52,17 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        server = "${SERVER}"
-        url = f'https://{server}'
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
         print(f'Testing tunnel: {url}')
-        for attempt in range(5):
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
                 resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_AUTO' in resp:
@@ -121,13 +125,17 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        server = "${SERVER}"
-        url = f'https://{server}'
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
         print(f'Testing tunnel: {url}')
-        for attempt in range(5):
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
                 resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_CF' in resp:
@@ -190,13 +198,17 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        server = "${SERVER}"
-        url = f'https://{server}'
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
         print(f'Testing tunnel: {url}')
-        for attempt in range(5):
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
                 resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_LHRUN' in resp:
@@ -259,13 +271,17 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        server = "${SERVER}"
-        url = f'https://{server}'
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
         print(f'Testing tunnel: {url}')
-        for attempt in range(5):
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
                 resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_PINGGY' in resp:
@@ -328,13 +344,17 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        server = "${SERVER}"
-        url = f'https://{server}'
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
         print(f'Testing tunnel: {url}')
-        for attempt in range(5):
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
                 resp = urllib.request.urlopen(url, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_SERVEO' in resp:
@@ -397,12 +417,18 @@ jobs:
       run: |
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
-        import urllib.request, ssl, time, sys
+        import urllib.request, ssl, time, sys, socket
+        from urllib.parse import urlparse
         ctx = ssl.create_default_context()
-        req = urllib.request.Request(f'https://${SERVER}', headers={'Bypass-Tunnel-Reminder': 'true'})
-        print(f'Testing tunnel: {req.full_url}')
-        for attempt in range(5):
+        server_raw = "${SERVER}".strip()
+        parsed = urlparse(server_raw if '://' in server_raw else f'https://{server_raw}')
+        host = (parsed.hostname or server_raw).strip()
+        url = f'https://{host}'
+        print(f'Testing tunnel: {url}')
+        for attempt in range(12):
             try:
+                socket.getaddrinfo(host, 443)
+                req = urllib.request.Request(url, headers={'Bypass-Tunnel-Reminder': 'true'})
                 resp = urllib.request.urlopen(req, timeout=30, context=ctx).read().decode()
                 print(f'Attempt {attempt+1} response: {resp[:200]}')
                 if 'TUNNEL_TEST_OK_LOCALTUNNEL' in resp:

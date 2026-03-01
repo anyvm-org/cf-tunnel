@@ -13,12 +13,12 @@ const { spawn } = require("child_process");
 function startBackgroundProcess(executable, args, logFile) {
   let child;
   if (os.platform() === 'win32') {
-    // On Windows, use cmd.exe for reliable I/O redirection.
-    // fd-based stdio with detached:true causes SSH port forwarding to not work.
-    const cmdLine = [executable, ...args].map(a =>
-      a.includes(' ') ? `"${a}"` : a
-    ).join(' ');
-    child = spawn('cmd.exe', ['/c', `${cmdLine} >"${logFile}" 2>&1`], {
+    // On Windows, write a .bat wrapper to handle I/O redirection reliably.
+    // Directly passing >"file" 2>&1 as spawn args causes quoting conflicts with cmd.exe /c.
+    const batFile = logFile + '.bat';
+    const cmdArgs = args.map(a => a.includes(' ') ? `"${a}"` : a).join(' ');
+    fs.writeFileSync(batFile, `@${executable} ${cmdArgs} >"${logFile}" 2>&1\n`);
+    child = spawn('cmd.exe', ['/c', batFile], {
       stdio: 'ignore',
       detached: true,
       windowsHide: true,

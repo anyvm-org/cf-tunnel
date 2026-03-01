@@ -40,10 +40,10 @@ jobs:
     runs-on: ubuntu-latest
     name: Create tunnel
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Establish tunnel
       id: tunnel
-      uses: vmactions/cf-tunnel@v0
+      uses: anyvm-org/cf-tunnel@v0
       with:
         protocol: http
         port: 8080
@@ -54,7 +54,7 @@ jobs:
 ### Specify a provider
 
 ```yml
-    - uses: vmactions/cf-tunnel@v0
+    - uses: anyvm-org/cf-tunnel@v0
       with:
         protocol: http
         port: 8080
@@ -64,7 +64,7 @@ jobs:
 ### TCP tunnel
 
 ```yml
-    - uses: vmactions/cf-tunnel@v0
+    - uses: anyvm-org/cf-tunnel@v0
       with:
         protocol: tcp
         port: 22

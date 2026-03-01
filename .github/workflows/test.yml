@@ -42,7 +42,7 @@ jobs:
         PYEOF
     - name: Run tunnel (auto)
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -115,7 +115,7 @@ jobs:
         PYEOF
     - name: Run cf tunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -189,7 +189,7 @@ jobs:
         PYEOF
     - name: Run localhost.run tunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -263,7 +263,7 @@ jobs:
         PYEOF
     - name: Run pinggy tunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -337,7 +337,7 @@ jobs:
         PYEOF
     - name: Run serveo tunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -411,7 +411,7 @@ jobs:
         PYEOF
     - name: Run localtunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: http
         port: 8899
@@ -496,7 +496,7 @@ jobs:
         "
     - name: Run TCP tunnel (auto)
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: tcp
         port: 8899
@@ -583,7 +583,7 @@ jobs:
         "
     - name: Run TCP pinggy tunnel
       id: test
-      uses: vmactions/cf-tunnel@main
+      uses: anyvm-org/cf-tunnel@main
       with:
         protocol: tcp
         port: 8899

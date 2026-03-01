@@ -16,11 +16,12 @@ const HELPER_CODE = `
 "use strict";
 const { spawn } = require("child_process");
 const fs = require("fs");
-const [,, logFile, executable, ...args] = process.argv;
+const [,, logFile, useShell, executable, ...args] = process.argv;
 fs.writeFileSync(logFile, "");  // create file immediately so main can detect it
 const child = spawn(executable, args, {
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: true,
+  shell: useShell === "1",
 });
 const logStream = fs.createWriteStream(logFile);
 child.stdout.on("data", (chunk) => logStream.write(chunk));
@@ -32,7 +33,8 @@ child.on("error", (err) => {
 });
 `.trim();
 
-function startBackgroundProcess(executable, args, logFile) {
+function startBackgroundProcess(executable, args, logFile, options) {
+  const useShell = (options && options.shell) ? true : false;
   let child;
   if (os.platform() === 'win32') {
     // On Windows, SSH and other TUI programs write directly to the console buffer,
@@ -42,7 +44,7 @@ function startBackgroundProcess(executable, args, logFile) {
     // after the main Action Node process calls process.exit().
     const helperScript = logFile + '.helper.js';
     fs.writeFileSync(helperScript, HELPER_CODE);
-    child = spawn(process.execPath, [helperScript, logFile, executable, ...args], {
+    child = spawn(process.execPath, [helperScript, logFile, useShell ? '1' : '0', executable, ...args], {
       stdio: 'ignore',
       detached: true,
       windowsHide: true,
@@ -458,8 +460,7 @@ async function runLocaltunnel(protocol, port) {
   let log = path.join(workingDir, "./localtunnel.log");
 
   // Install and run localtunnel via npx
-  const npxCmd = os.platform() === 'win32' ? 'npx.cmd' : 'npx';
-  startBackgroundProcess(npxCmd, ['-y', 'localtunnel', '--port', `${port}`], log);
+  startBackgroundProcess('npx', ['-y', 'localtunnel', '--port', `${port}`], log, { shell: true });
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

@@ -10,6 +10,28 @@ const os = require("os");
 const { spawn } = require("child_process");
 
 
+// Helper script code — written to a temp file at runtime so we don't rely on
+// a separate committed file being present in the action checkout.
+const HELPER_CODE = `
+"use strict";
+const { spawn } = require("child_process");
+const fs = require("fs");
+const [,, logFile, executable, ...args] = process.argv;
+fs.writeFileSync(logFile, "");  // create file immediately so main can detect it
+const child = spawn(executable, args, {
+  stdio: ["ignore", "pipe", "pipe"],
+  windowsHide: true,
+});
+const logStream = fs.createWriteStream(logFile);
+child.stdout.on("data", (chunk) => logStream.write(chunk));
+child.stderr.on("data", (chunk) => logStream.write(chunk));
+child.on("exit", (code) => { logStream.end(); process.exit(code || 0); });
+child.on("error", (err) => {
+  fs.appendFileSync(logFile, "spawn_helper error: " + err.message + "\\n");
+  process.exit(1);
+});
+`.trim();
+
 function startBackgroundProcess(executable, args, logFile) {
   let child;
   if (os.platform() === 'win32') {
@@ -18,7 +40,8 @@ function startBackgroundProcess(executable, args, logFile) {
     // We spawn a detached helper Node script that pipes the child's output to the
     // log file.  Because the helper is detached, it (and the tunnel process) survive
     // after the main Action Node process calls process.exit().
-    const helperScript = path.join(__dirname, 'spawn_helper.js');
+    const helperScript = logFile + '.helper.js';
+    fs.writeFileSync(helperScript, HELPER_CODE);
     child = spawn(process.execPath, [helperScript, logFile, executable, ...args], {
       stdio: 'ignore',
       detached: true,

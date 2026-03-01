@@ -14,6 +14,28 @@ async function sleep(ms) {
 }
 
 
+let sshKeyEnsured = false;
+async function ensureSshKey() {
+  if (sshKeyEnsured) return;
+  const sshDir = path.join(os.homedir(), ".ssh");
+  const keyFile = path.join(sshDir, "id_rsa");
+  if (!fs.existsSync(keyFile)) {
+    core.info("Generating SSH key for tunnel services...");
+    if (!fs.existsSync(sshDir)) {
+      fs.mkdirSync(sshDir, { mode: 0o700, recursive: true });
+    }
+    if (os.platform() === "win32") {
+      await exec.exec("ssh-keygen", ["-t", "rsa", "-b", "4096", "-f", keyFile, "-N", "", "-q"]);
+    } else {
+      await exec.exec("ssh-keygen", ["-t", "rsa", "-b", "4096", "-f", keyFile, "-N", "", "-q"]);
+    }
+  } else {
+    core.info("SSH key already exists.");
+  }
+  sshKeyEnsured = true;
+}
+
+
 async function download() {
   const CF_MAC_ARM = "https://github.com/cloudflare/cloudflared/releases/download/2025.11.1/cloudflared-darwin-arm64.tgz";
   const CF_MAC_AMD64 = "https://github.com/cloudflare/cloudflared/releases/download/2025.11.1/cloudflared-darwin-amd64.tgz";
@@ -174,6 +196,8 @@ async function setOutput(name, value) {
 async function runLocalhostRun(protocol, port) {
   core.info("Falling back to localhost.run tunnel service...");
 
+  await ensureSshKey();
+
   let workingDir = __dirname;
   let log = path.join(workingDir, "./localhost_run.log");
 
@@ -237,6 +261,8 @@ async function runLocalhostRun(protocol, port) {
 async function runPinggy(protocol, port) {
   core.info("Falling back to Pinggy tunnel service...");
 
+  await ensureSshKey();
+
   let workingDir = __dirname;
   let log = path.join(workingDir, "./pinggy.log");
 
@@ -298,6 +324,8 @@ async function runPinggy(protocol, port) {
 
 async function runServeo(protocol, port) {
   core.info("Falling back to Serveo tunnel service...");
+
+  await ensureSshKey();
 
   let workingDir = __dirname;
   let log = path.join(workingDir, "./serveo.log");

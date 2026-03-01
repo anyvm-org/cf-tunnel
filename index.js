@@ -21,6 +21,7 @@ fs.writeFileSync(logFile, "");  // create file immediately so main can detect it
 const child = spawn(executable, args, {
   stdio: ["ignore", "pipe", "pipe"],
   windowsHide: true,
+  shell: true,
 });
 const logStream = fs.createWriteStream(logFile);
 child.stdout.on("data", (chunk) => logStream.write(chunk));

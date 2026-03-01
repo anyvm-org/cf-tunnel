@@ -339,6 +339,12 @@ async function runPinggy(protocol, port) {
 
 
 async function runServeo(protocol, port) {
+  // Serveo only supports HTTP tunnels
+  if (protocol === "tcp") {
+    core.warning("Serveo does not support TCP tunnels, skipping.");
+    return false;
+  }
+
   core.info("Falling back to Serveo tunnel service...");
 
   await ensureSshKey();
@@ -346,13 +352,12 @@ async function runServeo(protocol, port) {
   let workingDir = __dirname;
   let log = path.join(workingDir, "./serveo.log");
 
-  // Serveo: HTTP uses -R 80:localhost:PORT, TCP uses -R 0:localhost:PORT (random port)
-  const remotePort = protocol === "tcp" ? "0" : "80";
+  // Serveo: HTTP uses -R 80:localhost:PORT
   if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','${remotePort}:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
     await exec.exec("powershell", ["-Command", psCmd]);
   } else {
-    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R ${remotePort}:localhost:${port} serveo.net >${log} 2>&1 &` });
+    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} serveo.net >${log} 2>&1 &` });
   }
 
   for (let i = 0; i < 12; i++) {
@@ -366,22 +371,12 @@ async function runServeo(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          if (protocol === "tcp") {
-            // TCP mode: Serveo outputs "Forwarding TCP connections from serveo.net:PORT"
-            const match = line.match(/serveo\.net:(\d+)/)
-              || line.match(/serveousercontent\.com:(\d+)/);
-            if (match && match[1]) {
-              server = "serveo.net:" + match[1];
-              break;
-            }
-          } else {
-            // HTTP mode: match https://xxxx.serveousercontent.com or https://xxxx.serveo.net
-            const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveousercontent\.com)/)
-              || line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
-            if (match && match[1]) {
-              server = match[1];
-              break;
-            }
+          // HTTP mode: match https://xxxx.serveousercontent.com or https://xxxx.serveo.net
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveousercontent\.com)/)
+            || line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
           }
         }
       }

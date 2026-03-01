@@ -272,7 +272,7 @@ async function runLocalhostRun(protocol, port) {
 
   // localhost.run uses SSH to create HTTP tunnels
   // ssh -o StrictHostKeyChecking=no -R 80:localhost:PORT ssh.localhost.run
-  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:localhost:${port}`, 'ssh.localhost.run'], log);
+  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:127.0.0.1:${port}`, 'ssh.localhost.run'], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);
@@ -328,7 +328,7 @@ async function runPinggy(protocol, port) {
 
   // Pinggy uses SSH: for HTTP use a.pinggy.io, for TCP use tcp@a.pinggy.io
   const sshUser = protocol === "tcp" ? "tcp@a.pinggy.io" : "a.pinggy.io";
-  startBackgroundProcess('ssh', ['-p', '443', `-R0:localhost:${port}`, '-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', sshUser], log);
+  startBackgroundProcess('ssh', ['-p', '443', `-R0:127.0.0.1:${port}`, '-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', sshUser], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);
@@ -398,7 +398,7 @@ async function runServeo(protocol, port) {
   let log = path.join(workingDir, "./serveo.log");
 
   // Serveo: HTTP uses -R 80:localhost:PORT
-  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:localhost:${port}`, 'serveo.net'], log);
+  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:127.0.0.1:${port}`, 'serveo.net'], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

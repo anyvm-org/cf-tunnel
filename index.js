@@ -11,17 +11,29 @@ const { spawn } = require("child_process");
 
 
 function startBackgroundProcess(executable, args, logFile) {
-  const fd = fs.openSync(logFile, 'w');
-  const child = spawn(executable, args, {
-    stdio: ['ignore', fd, fd],
-    detached: true,
-    windowsHide: true,
-  });
+  let child;
+  if (os.platform() === 'win32') {
+    // On Windows, use cmd.exe for reliable I/O redirection.
+    // fd-based stdio with detached:true causes SSH port forwarding to not work.
+    const cmdLine = [executable, ...args].map(a =>
+      a.includes(' ') ? `"${a}"` : a
+    ).join(' ');
+    child = spawn('cmd.exe', ['/c', `${cmdLine} >"${logFile}" 2>&1`], {
+      stdio: 'ignore',
+      detached: true,
+      windowsHide: true,
+    });
+  } else {
+    const fd = fs.openSync(logFile, 'w');
+    child = spawn(executable, args, {
+      stdio: ['ignore', fd, fd],
+      detached: true,
+    });
+  }
   child.on('error', (err) => {
     core.info(`Background process error for ${executable}: ${err.message}`);
   });
   child.unref();
-  // Do not close fd here - child process needs to keep writing to it
 }
 
 
@@ -411,8 +423,7 @@ async function runLocaltunnel(protocol, port) {
   let log = path.join(workingDir, "./localtunnel.log");
 
   // Install and run localtunnel via npx
-  const npxCmd = os.platform() === 'win32' ? 'npx.cmd' : 'npx';
-  startBackgroundProcess(npxCmd, ['-y', 'localtunnel', '--port', `${port}`], log);
+  startBackgroundProcess('npx', ['-y', 'localtunnel', '--port', `${port}`], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

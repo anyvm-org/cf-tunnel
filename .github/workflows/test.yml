@@ -340,8 +340,12 @@ jobs:
         python3 -c "
         import socket, threading
         def handle(c):
-            c.sendall(b'TCP_TUNNEL_TEST_OK_AUTO\n')
-            c.close()
+            try:
+                c.settimeout(10)
+                req = c.recv(1024)
+                c.sendall(b'TCP_TUNNEL_TEST_OK_AUTO\n')
+            except: pass
+            finally: c.close()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('0.0.0.0', 8899))
@@ -357,6 +361,7 @@ jobs:
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(('localhost', 8899))
+        s.sendall(b'PING')
         data = s.recv(1024).decode()
         s.close()
         assert 'TCP_TUNNEL_TEST_OK_AUTO' in data, f'Unexpected: {data}'
@@ -383,6 +388,7 @@ jobs:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(30)
                 s.connect((host, int(port)))
+                s.sendall(b'PING')
                 data = s.recv(1024).decode()
                 s.close()
                 print(f'Attempt {attempt+1} response:', data.strip())
@@ -416,8 +422,12 @@ jobs:
         python3 -c "
         import socket, threading
         def handle(c):
-            c.sendall(b'TCP_TUNNEL_TEST_OK_CF\n')
-            c.close()
+            try:
+                c.settimeout(10)
+                req = c.recv(1024)
+                c.sendall(b'TCP_TUNNEL_TEST_OK_CF\n')
+            except: pass
+            finally: c.close()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('0.0.0.0', 8899))
@@ -433,6 +443,7 @@ jobs:
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(('localhost', 8899))
+        s.sendall(b'PING')
         data = s.recv(1024).decode()
         s.close()
         assert 'TCP_TUNNEL_TEST_OK_CF' in data, f'Unexpected: {data}'
@@ -460,6 +471,7 @@ jobs:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(30)
                 s.connect((host, int(port)))
+                s.sendall(b'PING')
                 data = s.recv(1024).decode()
                 s.close()
                 print(f'Attempt {attempt+1} response:', data.strip())
@@ -493,8 +505,12 @@ jobs:
         python3 -c "
         import socket, threading
         def handle(c):
-            c.sendall(b'TCP_TUNNEL_TEST_OK_PINGGY\n')
-            c.close()
+            try:
+                c.settimeout(10)
+                req = c.recv(1024)
+                c.sendall(b'TCP_TUNNEL_TEST_OK_PINGGY\n')
+            except: pass
+            finally: c.close()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(('0.0.0.0', 8899))
@@ -510,6 +526,7 @@ jobs:
         import socket
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(('localhost', 8899))
+        s.sendall(b'PING')
         data = s.recv(1024).decode()
         s.close()
         assert 'TCP_TUNNEL_TEST_OK_PINGGY' in data, f'Unexpected: {data}'
@@ -537,6 +554,7 @@ jobs:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.settimeout(30)
                 s.connect((host, int(port)))
+                s.sendall(b'PING')
                 data = s.recv(1024).decode()
                 s.close()
                 print(f'Attempt {attempt+1} response:', data.strip())

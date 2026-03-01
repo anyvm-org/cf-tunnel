@@ -409,6 +409,74 @@ async function runServeo(protocol, port) {
 }
 
 
+async function runLocaltunnel(protocol, port) {
+  // localtunnel only supports HTTP tunnels
+  if (protocol === "tcp") {
+    core.warning("localtunnel does not support TCP tunnels, skipping.");
+    return false;
+  }
+
+  core.info("Falling back to localtunnel service...");
+
+  let workingDir = __dirname;
+  let log = path.join(workingDir, "./localtunnel.log");
+
+  // Install and run localtunnel via npx
+  if (os.platform() === "win32") {
+    const psCmd = `Start-Process -NoNewWindow -FilePath "npx" -ArgumentList @('-y','localtunnel','--port','${port}') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    await exec.exec("powershell", ["-Command", psCmd]);
+  } else {
+    await exec.exec("sh", [], { input: `npx -y localtunnel --port ${port} >${log} 2>&1 &` });
+  }
+
+  for (let i = 0; i < 12; i++) {
+    await sleep(5000);
+
+    let server = "";
+    try {
+      if (fs.existsSync(log)) {
+        const logContent = fs.readFileSync(log, 'utf8');
+        const lines = logContent.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          // localtunnel outputs: your url is: https://xxxx.loca.lt
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.loca\.lt)/);
+          if (match && match[1]) {
+            server = match[1];
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      core.info("Error reading localtunnel log: " + e.message);
+    }
+
+    if (!server) {
+      continue;
+    }
+    core.info("localtunnel server: " + server);
+
+    await setOutput("server", server);
+    return true;
+  }
+
+  // On timeout, surface log for debugging
+  if (fs.existsSync(log)) {
+    try {
+      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
+      const tailLines = logContent.slice(-20).join('\n');
+      core.info("localtunnel last log lines:\n" + tailLines);
+    } catch (e) {
+      core.info("Could not read localtunnel log tail: " + e.message);
+    }
+  }
+
+  core.warning("localtunnel failed to get tunnel URL after 60 seconds.");
+  return false;
+}
+
+
 async function main() {
 
   let protocol = core.getInput("protocol");
@@ -433,13 +501,14 @@ async function main() {
     { name: "localhost.run", fn: async () => await runLocalhostRun(protocol, port) },
     { name: "pinggy",        fn: async () => await runPinggy(protocol, port) },
     { name: "serveo",        fn: async () => await runServeo(protocol, port) },
+    { name: "localtunnel",   fn: async () => await runLocaltunnel(protocol, port) },
   ];
 
   let chain;
   if (provider) {
     const selected = providers.find(p => p.name === provider);
     if (!selected) {
-      core.setFailed(`Unknown provider: "${provider}". Valid values: cf, localhost.run, pinggy, serveo`);
+      core.setFailed(`Unknown provider: "${provider}". Valid values: cf, localhost.run, pinggy, serveo, localtunnel`);
       return;
     }
     chain = [selected];

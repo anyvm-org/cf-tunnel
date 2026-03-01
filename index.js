@@ -197,9 +197,8 @@ async function runLocalhostRun(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          // localhost.run outputs URLs like https://xxxx.lhr.life
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.lhr\.life)/)
-            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.localhost\.run)/);
+          // localhost.run outputs tunnel URLs like https://xxxx.lhr.life
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.lhr\.life)/);
           if (match && match[1]) {
             server = match[1];
             break;
@@ -260,10 +259,8 @@ async function runPinggy(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          // Pinggy outputs URLs like https://xxxx-xx-xx-xx-xx.a.free.pinggy.link
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/)
-            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.io)/)
-            || line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.online)/);
+          // Pinggy outputs tunnel URLs like https://xxxx-xx-xx-xx-xx.a.free.pinggy.link
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/);
           if (match && match[1]) {
             server = match[1];
             break;
@@ -324,8 +321,9 @@ async function runServeo(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          // Serveo outputs URLs like https://xxxx.serveo.net
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveo\.net)/);
+          // Serveo outputs tunnel URLs like https://abcdef1234.serveo.net
+          // Require 5+ char subdomain to avoid matching non-tunnel URLs
+          const match = line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
           if (match && match[1]) {
             server = match[1];
             break;

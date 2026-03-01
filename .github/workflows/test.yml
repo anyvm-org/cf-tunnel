@@ -8,81 +8,211 @@ jobs:
     name: Test auto fallback (all providers)
     steps:
     - uses: actions/checkout@v6
+    - name: Start local HTTP server
+      run: |
+        python3 -c "
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain')
+                self.end_headers()
+                self.wfile.write(b'TUNNEL_TEST_OK_AUTO')
+            def log_message(self, *a): pass
+        HTTPServer(('0.0.0.0',8899),H).serve_forever()
+        " &
+        sleep 1
+    - name: Verify local server is running
+      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_AUTO
     - name: Run establish a tunnel (auto)
       id: test
       uses: vmactions/cf-tunnel@main
       with:
-        protocol: tcp
-        port: 22
+        protocol: http
+        port: 8899
     - name: Show tunnel server
       run: echo "server=${{ steps.test.outputs.server }}"
-    - name: sleep
-      run: sleep 30
+    - name: Verify tunnel connectivity
+      run: |
+        SERVER="${{ steps.test.outputs.server }}"
+        echo "Testing tunnel: https://${SERVER}"
+        RESP=$(curl -sL --retry 3 --retry-delay 5 --max-time 30 "https://${SERVER}")
+        echo "Response: ${RESP}"
+        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_AUTO"; then
+          echo "Tunnel verification PASSED"
+        else
+          echo "Tunnel verification FAILED"
+          exit 1
+        fi
 
   test-cf:
     runs-on: ubuntu-latest
     name: Test cloudflare provider
     steps:
     - uses: actions/checkout@v6
+    - name: Start local HTTP server
+      run: |
+        python3 -c "
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain')
+                self.end_headers()
+                self.wfile.write(b'TUNNEL_TEST_OK_CF')
+            def log_message(self, *a): pass
+        HTTPServer(('0.0.0.0',8899),H).serve_forever()
+        " &
+        sleep 1
+    - name: Verify local server is running
+      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_CF
     - name: Run cf tunnel
       id: test
       uses: vmactions/cf-tunnel@main
       with:
-        protocol: tcp
-        port: 22
+        protocol: http
+        port: 8899
         provider: cf
     - name: Show tunnel server
       run: echo "server=${{ steps.test.outputs.server }}"
-    - name: sleep
-      run: sleep 30
+    - name: Verify tunnel connectivity
+      run: |
+        SERVER="${{ steps.test.outputs.server }}"
+        echo "Testing tunnel: https://${SERVER}"
+        RESP=$(curl -sL --retry 3 --retry-delay 5 --max-time 30 "https://${SERVER}")
+        echo "Response: ${RESP}"
+        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_CF"; then
+          echo "Tunnel verification PASSED"
+        else
+          echo "Tunnel verification FAILED"
+          exit 1
+        fi
 
   test-localhost-run:
     runs-on: ubuntu-latest
     name: Test localhost.run provider
     steps:
     - uses: actions/checkout@v6
+    - name: Start local HTTP server
+      run: |
+        python3 -c "
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain')
+                self.end_headers()
+                self.wfile.write(b'TUNNEL_TEST_OK_LHRUN')
+            def log_message(self, *a): pass
+        HTTPServer(('0.0.0.0',8899),H).serve_forever()
+        " &
+        sleep 1
+    - name: Verify local server is running
+      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_LHRUN
     - name: Run localhost.run tunnel
       id: test
       uses: vmactions/cf-tunnel@main
       with:
-        protocol: tcp
-        port: 22
+        protocol: http
+        port: 8899
         provider: localhost.run
     - name: Show tunnel server
       run: echo "server=${{ steps.test.outputs.server }}"
-    - name: sleep
-      run: sleep 30
+    - name: Verify tunnel connectivity
+      run: |
+        SERVER="${{ steps.test.outputs.server }}"
+        echo "Testing tunnel: https://${SERVER}"
+        RESP=$(curl -sL --retry 3 --retry-delay 5 --max-time 30 "https://${SERVER}")
+        echo "Response: ${RESP}"
+        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_LHRUN"; then
+          echo "Tunnel verification PASSED"
+        else
+          echo "Tunnel verification FAILED"
+          exit 1
+        fi
 
   test-pinggy:
     runs-on: ubuntu-latest
     name: Test pinggy provider
     steps:
     - uses: actions/checkout@v6
+    - name: Start local HTTP server
+      run: |
+        python3 -c "
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain')
+                self.end_headers()
+                self.wfile.write(b'TUNNEL_TEST_OK_PINGGY')
+            def log_message(self, *a): pass
+        HTTPServer(('0.0.0.0',8899),H).serve_forever()
+        " &
+        sleep 1
+    - name: Verify local server is running
+      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_PINGGY
     - name: Run pinggy tunnel
       id: test
       uses: vmactions/cf-tunnel@main
       with:
-        protocol: tcp
-        port: 22
+        protocol: http
+        port: 8899
         provider: pinggy
     - name: Show tunnel server
       run: echo "server=${{ steps.test.outputs.server }}"
-    - name: sleep
-      run: sleep 30
+    - name: Verify tunnel connectivity
+      run: |
+        SERVER="${{ steps.test.outputs.server }}"
+        echo "Testing tunnel: https://${SERVER}"
+        RESP=$(curl -sL --retry 3 --retry-delay 5 --max-time 30 "https://${SERVER}")
+        echo "Response: ${RESP}"
+        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_PINGGY"; then
+          echo "Tunnel verification PASSED"
+        else
+          echo "Tunnel verification FAILED"
+          exit 1
+        fi
 
   test-serveo:
     runs-on: ubuntu-latest
     name: Test serveo provider
     steps:
     - uses: actions/checkout@v6
+    - name: Start local HTTP server
+      run: |
+        python3 -c "
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header('Content-Type','text/plain')
+                self.end_headers()
+                self.wfile.write(b'TUNNEL_TEST_OK_SERVEO')
+            def log_message(self, *a): pass
+        HTTPServer(('0.0.0.0',8899),H).serve_forever()
+        " &
+        sleep 1
+    - name: Verify local server is running
+      run: curl -s http://localhost:8899 | grep TUNNEL_TEST_OK_SERVEO
     - name: Run serveo tunnel
       id: test
       uses: vmactions/cf-tunnel@main
       with:
-        protocol: tcp
-        port: 22
+        protocol: http
+        port: 8899
         provider: serveo
     - name: Show tunnel server
       run: echo "server=${{ steps.test.outputs.server }}"
-    - name: sleep
-      run: sleep 30
+    - name: Verify tunnel connectivity
+      run: |
+        SERVER="${{ steps.test.outputs.server }}"
+        echo "Testing tunnel: https://${SERVER}"
+        RESP=$(curl -sL --retry 3 --retry-delay 5 --max-time 30 "https://${SERVER}")
+        echo "Response: ${RESP}"
+        if echo "${RESP}" | grep -q "TUNNEL_TEST_OK_SERVEO"; then
+          echo "Tunnel verification PASSED"
+        else
+          echo "Tunnel verification FAILED"
+          exit 1
+        fi

@@ -194,6 +194,12 @@ async function setOutput(name, value) {
 
 
 async function runLocalhostRun(protocol, port) {
+  // localhost.run only supports HTTP tunnels
+  if (protocol === "tcp") {
+    core.warning("localhost.run does not support TCP tunnels, skipping.");
+    return false;
+  }
+
   core.info("Falling back to localhost.run tunnel service...");
 
   await ensureSshKey();
@@ -266,12 +272,13 @@ async function runPinggy(protocol, port) {
   let workingDir = __dirname;
   let log = path.join(workingDir, "./pinggy.log");
 
-  // Pinggy uses SSH: ssh -p 443 -R0:localhost:PORT -o StrictHostKeyChecking=no a.pinggy.io
+  // Pinggy uses SSH: for HTTP use a.pinggy.io, for TCP use tcp@a.pinggy.io
+  const sshUser = protocol === "tcp" ? "tcp@a.pinggy.io" : "a.pinggy.io";
   if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-p','443','-R0:localhost:${port}','-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','a.pinggy.io') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-p','443','-R0:localhost:${port}','-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','${sshUser}') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
     await exec.exec("powershell", ["-Command", psCmd]);
   } else {
-    await exec.exec("sh", [], { input: `ssh -p 443 -R0:localhost:${port} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 a.pinggy.io >${log} 2>&1 &` });
+    await exec.exec("sh", [], { input: `ssh -p 443 -R0:localhost:${port} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 ${sshUser} >${log} 2>&1 &` });
   }
 
   for (let i = 0; i < 12; i++) {
@@ -285,11 +292,20 @@ async function runPinggy(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          // Pinggy outputs tunnel URLs like https://xxxx-xx-xx-xx-xx.a.free.pinggy.link
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/);
-          if (match && match[1]) {
-            server = match[1];
-            break;
+          if (protocol === "tcp") {
+            // TCP mode: match tcp://host:port
+            const match = line.match(/tcp:\/\/([A-Za-z0-9._-]+\.pinggy\.link:\d+)/);
+            if (match && match[1]) {
+              server = match[1];
+              break;
+            }
+          } else {
+            // HTTP mode: match https://xxxx.pinggy.link
+            const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.pinggy\.link)/);
+            if (match && match[1]) {
+              server = match[1];
+              break;
+            }
           }
         }
       }
@@ -330,12 +346,13 @@ async function runServeo(protocol, port) {
   let workingDir = __dirname;
   let log = path.join(workingDir, "./serveo.log");
 
-  // Serveo uses SSH: ssh -o StrictHostKeyChecking=no -R 80:localhost:PORT serveo.net
+  // Serveo: HTTP uses -R 80:localhost:PORT, TCP uses -R 0:localhost:PORT (random port)
+  const remotePort = protocol === "tcp" ? "0" : "80";
   if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
+    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','${remotePort}:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
     await exec.exec("powershell", ["-Command", psCmd]);
   } else {
-    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} serveo.net >${log} 2>&1 &` });
+    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R ${remotePort}:localhost:${port} serveo.net >${log} 2>&1 &` });
   }
 
   for (let i = 0; i < 12; i++) {
@@ -349,12 +366,20 @@ async function runServeo(protocol, port) {
 
         for (const line of lines) {
           if (!line.trim()) continue;
-          // Serveo outputs tunnel URLs like https://abcdef1234.serveo.net
-          // Require 5+ char subdomain to avoid matching non-tunnel URLs
-          const match = line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
-          if (match && match[1]) {
-            server = match[1];
-            break;
+          if (protocol === "tcp") {
+            // TCP mode: Serveo outputs "Forwarding TCP connections from serveo.net:PORT"
+            const match = line.match(/serveo\.net:(\d+)/);
+            if (match && match[1]) {
+              server = "serveo.net:" + match[1];
+              break;
+            }
+          } else {
+            // HTTP mode: match https://abcdef1234.serveo.net
+            const match = line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
+            if (match && match[1]) {
+              server = match[1];
+              break;
+            }
           }
         }
       }

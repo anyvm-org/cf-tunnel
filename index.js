@@ -7,6 +7,20 @@ const io = require('@actions/io');
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
+const { spawn } = require("child_process");
+
+
+function startBackgroundProcess(executable, args, logFile) {
+  const fd = fs.openSync(logFile, 'w');
+  const child = spawn(executable, args, {
+    stdio: ['ignore', fd, fd],
+    detached: true,
+    windowsHide: true,
+    shell: os.platform() === 'win32',
+  });
+  child.unref();
+  fs.closeSync(fd);
+}
 
 
 async function sleep(ms) {
@@ -24,11 +38,7 @@ async function ensureSshKey() {
     if (!fs.existsSync(sshDir)) {
       fs.mkdirSync(sshDir, { mode: 0o700, recursive: true });
     }
-    if (os.platform() === "win32") {
-      await exec.exec("ssh-keygen", ["-t", "rsa", "-b", "4096", "-f", keyFile, "-N", "", "-q"]);
-    } else {
-      await exec.exec("ssh-keygen", ["-t", "rsa", "-b", "4096", "-f", keyFile, "-N", "", "-q"]);
-    }
+    await exec.exec("ssh-keygen", ["-t", "rsa", "-b", "4096", "-f", keyFile, "-N", "", "-q"]);
   } else {
     core.info("SSH key already exists.");
   }
@@ -109,14 +119,7 @@ async function run(protocol, port) {
   }
 
   // Start tunnel in background
-  if (os.platform() === "win32") {
-    // Windows: use PowerShell to start background process
-    const psCmd = `Start-Process -NoNewWindow -FilePath "${cfd}" -ArgumentList @('tunnel','--url','${protocol}://localhost:${port}','--output','json') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
-    await exec.exec("powershell", ["-Command", psCmd]);
-  } else {
-    // Unix: use shell to start background process
-    await exec.exec("sh", [], { input: `${cfd} tunnel --url ${protocol}://localhost:${port} --output json >${log} 2>&1 &` });
-  }
+  startBackgroundProcess(cfd, ['tunnel', '--url', `${protocol}://localhost:${port}`, '--output', 'json'], log);
 
 
   for (let i = 0; i < 12; i++) {
@@ -185,10 +188,9 @@ async function run(protocol, port) {
 
 
 async function setOutput(name, value) {
-  if (os.platform() === "win32") {
-    await exec.exec("powershell", ["-Command", `Add-Content -Path "$env:GITHUB_OUTPUT" -Value "${name}=${value}"`]);
-  } else {
-    await exec.exec("sh", [], { input: `echo "${name}=${value}" >> $GITHUB_OUTPUT` });
+  const outputFile = process.env.GITHUB_OUTPUT;
+  if (outputFile) {
+    fs.appendFileSync(outputFile, `${name}=${value}\n`);
   }
 }
 
@@ -209,12 +211,7 @@ async function runLocalhostRun(protocol, port) {
 
   // localhost.run uses SSH to create HTTP tunnels
   // ssh -o StrictHostKeyChecking=no -R 80:localhost:PORT ssh.localhost.run
-  if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','ssh.localhost.run') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
-    await exec.exec("powershell", ["-Command", psCmd]);
-  } else {
-    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} ssh.localhost.run >${log} 2>&1 &` });
-  }
+  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:localhost:${port}`, 'ssh.localhost.run'], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);
@@ -274,12 +271,7 @@ async function runPinggy(protocol, port) {
 
   // Pinggy uses SSH: for HTTP use a.pinggy.io, for TCP use tcp@a.pinggy.io
   const sshUser = protocol === "tcp" ? "tcp@a.pinggy.io" : "a.pinggy.io";
-  if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-p','443','-R0:localhost:${port}','-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','${sshUser}') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
-    await exec.exec("powershell", ["-Command", psCmd]);
-  } else {
-    await exec.exec("sh", [], { input: `ssh -p 443 -R0:localhost:${port} -o StrictHostKeyChecking=no -o ServerAliveInterval=60 ${sshUser} >${log} 2>&1 &` });
-  }
+  startBackgroundProcess('ssh', ['-p', '443', `-R0:localhost:${port}`, '-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', sshUser], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);
@@ -353,12 +345,7 @@ async function runServeo(protocol, port) {
   let log = path.join(workingDir, "./serveo.log");
 
   // Serveo: HTTP uses -R 80:localhost:PORT
-  if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "ssh" -ArgumentList @('-o','StrictHostKeyChecking=no','-o','ServerAliveInterval=60','-R','80:localhost:${port}','serveo.net') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
-    await exec.exec("powershell", ["-Command", psCmd]);
-  } else {
-    await exec.exec("sh", [], { input: `ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -R 80:localhost:${port} serveo.net >${log} 2>&1 &` });
-  }
+  startBackgroundProcess('ssh', ['-o', 'StrictHostKeyChecking=no', '-o', 'ServerAliveInterval=60', '-R', `80:localhost:${port}`, 'serveo.net'], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);
@@ -422,12 +409,7 @@ async function runLocaltunnel(protocol, port) {
   let log = path.join(workingDir, "./localtunnel.log");
 
   // Install and run localtunnel via npx
-  if (os.platform() === "win32") {
-    const psCmd = `Start-Process -NoNewWindow -FilePath "npx" -ArgumentList @('-y','localtunnel','--port','${port}') -RedirectStandardOutput "${log}" -RedirectStandardError "${log}"`;
-    await exec.exec("powershell", ["-Command", psCmd]);
-  } else {
-    await exec.exec("sh", [], { input: `npx -y localtunnel --port ${port} >${log} 2>&1 &` });
-  }
+  startBackgroundProcess('npx', ['-y', 'localtunnel', '--port', `${port}`], log);
 
   for (let i = 0; i < 12; i++) {
     await sleep(5000);

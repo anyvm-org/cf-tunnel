@@ -50,6 +50,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket
@@ -123,6 +124,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket
@@ -196,6 +198,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket
@@ -269,6 +272,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket
@@ -342,6 +346,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket
@@ -415,6 +420,7 @@ jobs:
       run: echo "server=${{ steps.test.outputs.server }}"
     - name: Verify tunnel connectivity
       run: |
+        sleep 10
         SERVER="${{ steps.test.outputs.server }}"
         python3 << PYEOF
         import urllib.request, ssl, time, sys, socket

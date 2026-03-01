@@ -375,20 +375,25 @@ jobs:
         SERVER="${{ steps.test.outputs.server }}"
         echo "Testing TCP tunnel: ${SERVER}"
         python3 -c "
-        import socket, sys
+        import socket, sys, time
         server = '${SERVER}'
         host, port = server.rsplit(':', 1)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(30)
-        s.connect((host, int(port)))
-        data = s.recv(1024).decode()
-        s.close()
-        print('Response:', data.strip())
-        if 'TCP_TUNNEL_TEST_OK_AUTO' in data:
-            print('TCP tunnel verification PASSED')
-        else:
-            print('TCP tunnel verification FAILED')
-            sys.exit(1)
+        for attempt in range(5):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(30)
+                s.connect((host, int(port)))
+                data = s.recv(1024).decode()
+                s.close()
+                print(f'Attempt {attempt+1} response:', data.strip())
+                if 'TCP_TUNNEL_TEST_OK_AUTO' in data:
+                    print('TCP tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('TCP tunnel verification FAILED after 5 attempts')
+        sys.exit(1)
         "
 
   test-tcp-cf:
@@ -447,20 +452,25 @@ jobs:
         SERVER="${{ steps.test.outputs.server }}"
         echo "Testing TCP tunnel: ${SERVER}"
         python3 -c "
-        import socket, sys
+        import socket, sys, time
         server = '${SERVER}'
         host, port = server.rsplit(':', 1)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(30)
-        s.connect((host, int(port)))
-        data = s.recv(1024).decode()
-        s.close()
-        print('Response:', data.strip())
-        if 'TCP_TUNNEL_TEST_OK_CF' in data:
-            print('TCP tunnel verification PASSED')
-        else:
-            print('TCP tunnel verification FAILED')
-            sys.exit(1)
+        for attempt in range(5):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(30)
+                s.connect((host, int(port)))
+                data = s.recv(1024).decode()
+                s.close()
+                print(f'Attempt {attempt+1} response:', data.strip())
+                if 'TCP_TUNNEL_TEST_OK_CF' in data:
+                    print('TCP tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('TCP tunnel verification FAILED after 5 attempts')
+        sys.exit(1)
         "
 
   test-tcp-pinggy:
@@ -519,18 +529,23 @@ jobs:
         SERVER="${{ steps.test.outputs.server }}"
         echo "Testing TCP tunnel: ${SERVER}"
         python3 -c "
-        import socket, sys
+        import socket, sys, time
         server = '${SERVER}'
         host, port = server.rsplit(':', 1)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(30)
-        s.connect((host, int(port)))
-        data = s.recv(1024).decode()
-        s.close()
-        print('Response:', data.strip())
-        if 'TCP_TUNNEL_TEST_OK_PINGGY' in data:
-            print('TCP tunnel verification PASSED')
-        else:
-            print('TCP tunnel verification FAILED')
-            sys.exit(1)
+        for attempt in range(5):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(30)
+                s.connect((host, int(port)))
+                data = s.recv(1024).decode()
+                s.close()
+                print(f'Attempt {attempt+1} response:', data.strip())
+                if 'TCP_TUNNEL_TEST_OK_PINGGY' in data:
+                    print('TCP tunnel verification PASSED')
+                    sys.exit(0)
+            except Exception as e:
+                print(f'Attempt {attempt+1} failed: {e}')
+            time.sleep(5)
+        print('TCP tunnel verification FAILED after 5 attempts')
+        sys.exit(1)
         "

@@ -368,14 +368,16 @@ async function runServeo(protocol, port) {
           if (!line.trim()) continue;
           if (protocol === "tcp") {
             // TCP mode: Serveo outputs "Forwarding TCP connections from serveo.net:PORT"
-            const match = line.match(/serveo\.net:(\d+)/);
+            const match = line.match(/serveo\.net:(\d+)/)
+              || line.match(/serveousercontent\.com:(\d+)/);
             if (match && match[1]) {
               server = "serveo.net:" + match[1];
               break;
             }
           } else {
-            // HTTP mode: match https://abcdef1234.serveo.net
-            const match = line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
+            // HTTP mode: match https://xxxx.serveousercontent.com or https://xxxx.serveo.net
+            const match = line.match(/https?:\/\/([A-Za-z0-9._-]+\.serveousercontent\.com)/)
+              || line.match(/https?:\/\/([A-Za-z0-9._-]{5,}\.serveo\.net)/);
             if (match && match[1]) {
               server = match[1];
               break;

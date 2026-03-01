@@ -41,6 +41,33 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Strip ANSI escape sequences and terminal control characters from text.
+// SSH-based tunnel services (Pinggy, etc.) may output TUI with box-drawing
+// and ANSI codes when stdout is redirected on Windows.
+function stripAnsi(text) {
+  return text.replace(/\x1B\[[0-9;]*[A-Za-z]/g, '')
+             .replace(/\x1B\][^\x07]*\x07/g, '')
+             .replace(/\x1B[()][A-Z0-9]/g, '')
+             .replace(/\x1B[\x20-\x2F]*[\x40-\x7E]/g, '')
+             .replace(/[\x00-\x08\x0E-\x1F]/g, '');
+}
+
+// Read log file content with shared access (Windows cmd.exe keeps the file locked).
+function readLogFile(logPath) {
+  if (!fs.existsSync(logPath)) return '';
+  // Use fd with 'r' flag to open in shared read mode
+  const fd = fs.openSync(logPath, 'r');
+  try {
+    const stat = fs.fstatSync(fd);
+    if (stat.size === 0) return '';
+    const buf = Buffer.alloc(stat.size);
+    fs.readSync(fd, buf, 0, stat.size, 0);
+    return stripAnsi(buf.toString('utf8'));
+  } finally {
+    fs.closeSync(fd);
+  }
+}
+
 
 let sshKeyEnsured = false;
 async function ensureSshKey() {
@@ -142,8 +169,8 @@ async function run(protocol, port) {
     // Read and parse log file (supports both JSON lines and plain text)
     let server = "";
     try {
-      if (fs.existsSync(log)) {
-        const logContent = fs.readFileSync(log, 'utf8');
+      {
+        const logContent = readLogFile(log);
         const lines = logContent.split('\n');
         
         for (const line of lines) {
@@ -173,7 +200,7 @@ async function run(protocol, port) {
     } catch (e) {
       core.info("Error reading log: " + e.message);
     }
-    
+
     if (!server) {
       continue;
     }
@@ -185,14 +212,12 @@ async function run(protocol, port) {
   }
   
   // On timeout, surface a helpful log snippet for debugging
-  if (fs.existsSync(log)) {
-    try {
-      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
-      const tailLines = logContent.slice(-20).join('\n');
-      core.info("Last log lines:\n" + tailLines);
-    } catch (e) {
-      core.info("Could not read log tail: " + e.message);
-    }
+  try {
+    const logContent = readLogFile(log).trim().split('\n');
+    const tailLines = logContent.slice(-20).join('\n');
+    core.info("Last log lines:\n" + tailLines);
+  } catch (e) {
+    core.info("Could not read log tail: " + e.message);
   }
 
   core.warning("Cloudflared failed to get tunnel URL after 60 seconds.");
@@ -232,8 +257,8 @@ async function runLocalhostRun(protocol, port) {
 
     let server = "";
     try {
-      if (fs.existsSync(log)) {
-        const logContent = fs.readFileSync(log, 'utf8');
+      {
+        const logContent = readLogFile(log);
         const lines = logContent.split('\n');
 
         for (const line of lines) {
@@ -260,14 +285,12 @@ async function runLocalhostRun(protocol, port) {
   }
 
   // On timeout, surface log for debugging
-  if (fs.existsSync(log)) {
-    try {
-      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
-      const tailLines = logContent.slice(-20).join('\n');
-      core.info("localhost.run last log lines:\n" + tailLines);
-    } catch (e) {
-      core.info("Could not read localhost.run log tail: " + e.message);
-    }
+  try {
+    const logContent = readLogFile(log).trim().split('\n');
+    const tailLines = logContent.slice(-20).join('\n');
+    core.info("localhost.run last log lines:\n" + tailLines);
+  } catch (e) {
+    core.info("Could not read localhost.run log tail: " + e.message);
   }
 
   core.warning("localhost.run failed to get tunnel URL after 60 seconds.");
@@ -292,8 +315,8 @@ async function runPinggy(protocol, port) {
 
     let server = "";
     try {
-      if (fs.existsSync(log)) {
-        const logContent = fs.readFileSync(log, 'utf8');
+      {
+        const logContent = readLogFile(log);
         const lines = logContent.split('\n');
 
         for (const line of lines) {
@@ -329,14 +352,12 @@ async function runPinggy(protocol, port) {
   }
 
   // On timeout, surface log for debugging
-  if (fs.existsSync(log)) {
-    try {
-      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
-      const tailLines = logContent.slice(-20).join('\n');
-      core.info("Pinggy last log lines:\n" + tailLines);
-    } catch (e) {
-      core.info("Could not read Pinggy log tail: " + e.message);
-    }
+  try {
+    const logContent = readLogFile(log).trim().split('\n');
+    const tailLines = logContent.slice(-20).join('\n');
+    core.info("Pinggy last log lines:\n" + tailLines);
+  } catch (e) {
+    core.info("Could not read Pinggy log tail: " + e.message);
   }
 
   core.warning("Pinggy failed to get tunnel URL after 60 seconds.");
@@ -366,8 +387,8 @@ async function runServeo(protocol, port) {
 
     let server = "";
     try {
-      if (fs.existsSync(log)) {
-        const logContent = fs.readFileSync(log, 'utf8');
+      {
+        const logContent = readLogFile(log);
         const lines = logContent.split('\n');
 
         for (const line of lines) {
@@ -395,14 +416,12 @@ async function runServeo(protocol, port) {
   }
 
   // On timeout, surface log for debugging
-  if (fs.existsSync(log)) {
-    try {
-      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
-      const tailLines = logContent.slice(-20).join('\n');
-      core.info("Serveo last log lines:\n" + tailLines);
-    } catch (e) {
-      core.info("Could not read Serveo log tail: " + e.message);
-    }
+  try {
+    const logContent = readLogFile(log).trim().split('\n');
+    const tailLines = logContent.slice(-20).join('\n');
+    core.info("Serveo last log lines:\n" + tailLines);
+  } catch (e) {
+    core.info("Could not read Serveo log tail: " + e.message);
   }
 
   core.setFailed("Failed to get tunnel URL from Serveo.");
@@ -430,8 +449,8 @@ async function runLocaltunnel(protocol, port) {
 
     let server = "";
     try {
-      if (fs.existsSync(log)) {
-        const logContent = fs.readFileSync(log, 'utf8');
+      {
+        const logContent = readLogFile(log);
         const lines = logContent.split('\n');
 
         for (const line of lines) {
@@ -458,14 +477,12 @@ async function runLocaltunnel(protocol, port) {
   }
 
   // On timeout, surface log for debugging
-  if (fs.existsSync(log)) {
-    try {
-      const logContent = fs.readFileSync(log, 'utf8').trim().split('\n');
-      const tailLines = logContent.slice(-20).join('\n');
-      core.info("localtunnel last log lines:\n" + tailLines);
-    } catch (e) {
-      core.info("Could not read localtunnel log tail: " + e.message);
-    }
+  try {
+    const logContent = readLogFile(log).trim().split('\n');
+    const tailLines = logContent.slice(-20).join('\n');
+    core.info("localtunnel last log lines:\n" + tailLines);
+  } catch (e) {
+    core.info("Could not read localtunnel log tail: " + e.message);
   }
 
   core.warning("localtunnel failed to get tunnel URL after 60 seconds.");
